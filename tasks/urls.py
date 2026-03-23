@@ -25,6 +25,9 @@ urlpatterns = [
     path('tags/', views.get_task_tags, name='get_task_tags'),
     path('date-range/', views.tasks_by_date_range, name='tasks_by_date_range'),
     
+    # Task management
+    path('<int:task_id>/status/', views.update_task_status, name='update_task_status'),
+    
     # User management
     path('users/', views.users_for_assignment, name='users_for_assignment'),
 ]

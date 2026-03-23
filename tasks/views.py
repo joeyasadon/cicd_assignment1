@@ -5,7 +5,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 from django.contrib.auth.models import User
 from django.db import models
 from .models import Task
-from .serializers import TaskSerializer, TaskCreateSerializer, SimpleTaskCreateSerializer, UserSerializer
+from .serializers import TaskSerializer, TaskCreateSerializer, SimpleTaskCreateSerializer, TaskStatusUpdateSerializer, UserSerializer
 
 
 class TaskPagination(pagination.PageNumberPagination):
@@ -673,6 +673,41 @@ def users_for_assignment(request):
         'users': serializer.data,
         'total_count': users.count()
     })
+
+
+@api_view(['PATCH'])
+@permission_classes([permissions.IsAuthenticated])
+def update_task_status(request, task_id):
+    """
+    Update the status of a specific task
+    """
+    try:
+        # Get task that user owns or is assigned to
+        task = Task.objects.get(
+            models.Q(id=task_id) & 
+            (models.Q(owner=request.user) | models.Q(assigned_to=request.user))
+        )
+    except Task.DoesNotExist:
+        return Response({
+            'error': 'Task not found or you do not have permission to update it'
+        }, status=status.HTTP_404_NOT_FOUND)
+    
+    # Use the status update serializer
+    serializer = TaskStatusUpdateSerializer(task, data=request.data, partial=True)
+    
+    if serializer.is_valid():
+        old_status = task.status
+        updated_task = serializer.save()
+        
+        # Return updated task details
+        task_serializer = TaskSerializer(updated_task)
+        
+        return Response({
+            'message': f'Task status updated from "{old_status}" to "{updated_task.status}"',
+            'task': task_serializer.data
+        }, status=status.HTTP_200_OK)
+    
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 @api_view(['GET'])
