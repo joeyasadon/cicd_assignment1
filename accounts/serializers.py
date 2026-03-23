@@ -1,12 +1,23 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
 from rest_framework.authtoken.models import Token
+from .models import UserProfile
+
+
+class UserProfileSerializer(serializers.ModelSerializer):
+    email = serializers.EmailField(source='user.email', read_only=True)
+    display_name = serializers.CharField(source='user.first_name', read_only=True)
+    username = serializers.CharField(source='user.username', read_only=True)
+
+    class Meta:
+        model = UserProfile
+        fields = ('email', 'display_name', 'username', 'phone_number', 'created_at', 'updated_at')
 
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, min_length=8)
     confirm_password = serializers.CharField(write_only=True)
-    display_name = serializers.CharField(max_length=100)
+    display_name = serializers.CharField(max_length=100, required=True)
     token = serializers.CharField(read_only=True)
 
     class Meta:
@@ -17,6 +28,16 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         """Validate that email is unique"""
         if User.objects.filter(email=value).exists():
             raise serializers.ValidationError("A user with this email already exists.")
+        return value
+
+    def validate_password(self, value):
+        """Validate password strength"""
+        if len(value) < 8:
+            raise serializers.ValidationError("Password must be at least 8 characters long.")
+        if not any(char.isdigit() for char in value):
+            raise serializers.ValidationError("Password must contain at least one digit.")
+        if not any(char.isupper() for char in value):
+            raise serializers.ValidationError("Password must contain at least one uppercase letter.")
         return value
 
     def validate(self, attrs):
@@ -38,6 +59,9 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         
         # Create token for the user
         token = Token.objects.create(user=user)
+        
+        # Create user profile
+        UserProfile.objects.create(user=user)
         
         return {
             'user': user,
