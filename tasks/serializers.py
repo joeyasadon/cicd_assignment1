@@ -63,6 +63,35 @@ class TaskSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Actual hours must be positive.")
         return value
     
+    def validate_assigned_to(self, value):
+        """Handle assigned_to field - accept user ID or username"""
+        if value is None:
+            return value
+        
+        # If it's already an integer, treat as user ID
+        if isinstance(value, int):
+            try:
+                user = User.objects.get(id=value)
+                return user
+            except User.DoesNotExist:
+                raise serializers.ValidationError("User with this ID does not exist.")
+        
+        # If it's a string, treat as username or first name
+        if isinstance(value, str):
+            try:
+                # Try to find by username first
+                user = User.objects.get(username=value)
+                return user
+            except User.DoesNotExist:
+                try:
+                    # Try to find by first name (case insensitive)
+                    user = User.objects.get(first_name__iexact=value)
+                    return user
+                except User.DoesNotExist:
+                    raise serializers.ValidationError(f"User '{value}' not found.")
+        
+        return value
+    
     def create(self, validated_data):
         """Create task with authenticated user as owner"""
         # Set owner to authenticated user
@@ -142,6 +171,35 @@ class TaskCreateSerializer(serializers.ModelSerializer):
             if len(value) > 50:
                 raise serializers.ValidationError("Category cannot exceed 50 characters.")
             return value
+        
+        return value
+    
+    def validate_assigned_to(self, value):
+        """Handle assigned_to field - accept user ID or username"""
+        if value is None:
+            return value
+        
+        # If it's already an integer, treat as user ID
+        if isinstance(value, int):
+            try:
+                user = User.objects.get(id=value)
+                return user
+            except User.DoesNotExist:
+                raise serializers.ValidationError("User with this ID does not exist.")
+        
+        # If it's a string, treat as username or first name
+        if isinstance(value, str):
+            try:
+                # Try to find by username first
+                user = User.objects.get(username=value)
+                return user
+            except User.DoesNotExist:
+                try:
+                    # Try to find by first name (case insensitive)
+                    user = User.objects.get(first_name__iexact=value)
+                    return user
+                except User.DoesNotExist:
+                    raise serializers.ValidationError(f"User '{value}' not found.")
         
         return value
     
@@ -235,6 +293,22 @@ class SimpleTaskCreateSerializer(serializers.ModelSerializer):
         validated_data['status'] = 'todo'
         
         return super().create(validated_data)
+
+
+class TaskStatusUpdateSerializer(serializers.ModelSerializer):
+    """
+    Serializer specifically for updating task status
+    """
+    class Meta:
+        model = Task
+        fields = ['status']
+    
+    def validate_status(self, value):
+        """Validate that the status is one of the allowed choices"""
+        valid_statuses = [choice[0] for choice in Task.STATUS_CHOICES]
+        if value not in valid_statuses:
+            raise serializers.ValidationError(f"Invalid status. Must be one of: {', '.join(valid_statuses)}")
+        return value
 
 
 class UserSerializer(serializers.ModelSerializer):
