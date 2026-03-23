@@ -83,7 +83,7 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = 'tasksphere_app.wsgi.application'
+WSGI_APPLICATION = 'tasksphere_app.wsgi.app'
 
 
 # Database
