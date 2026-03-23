@@ -10,9 +10,15 @@ urlpatterns = [
     path('create/', views.create_task, name='create_task'),
     path('simple/', views.create_simple_task, name='create_simple_task'),
     
-    # Task retrieval and organization
+    # User-centric task viewing
+    path('dashboard/', views.user_dashboard, name='user_dashboard'),
     path('my-tasks/', views.my_tasks, name='my_tasks'),
+    path('my-tasks/enhanced/', views.my_tasks_enhanced, name='my_tasks_enhanced'),
     path('assigned/', views.assigned_tasks, name='assigned_tasks'),
+    path('progress/', views.task_progress, name='task_progress'),
+    path('calendar/', views.task_calendar, name='task_calendar'),
+    
+    # Task retrieval and organization
     path('search/', views.search_tasks, name='search_tasks'),
     path('statistics/', views.task_statistics, name='task_statistics'),
     path('categories/', views.get_task_categories, name='get_task_categories'),
