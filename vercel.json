@@ -2,7 +2,7 @@
   "framework": null,
   "builds": [
     {
-      "src": "message_app/wsgi.py",
+      "src": "tasksphere_app/wsgi.py",
       "use": "@vercel/python",
       "config": { "maxLambdaSize":  "15mb", "runtime":  "python3.9" }
     }
@@ -10,7 +10,7 @@
   "routes": [
     {
       "src": "/(.*)",
-      "dest": "message_app/wsgi.py",
+      "dest": "tasksphere_app/wsgi.py",
       "headers": {
         "Access-Control-Allow-Origin": "*",
         "Access-Control-Allow-Methods": "GET, POST, OPTIONS, DELETE, PUT"
@@ -18,7 +18,7 @@
     },
     {
       "src": "/(.*)",
-      "dest": "message_app/wsgi.py"
+      "dest": "tasksphere_app/wsgi.py"
     }
   ]
 }
