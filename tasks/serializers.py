@@ -323,37 +323,37 @@ class TaskUpdateSerializer(serializers.ModelSerializer):
         ]
     
     def validate_title(self, value):
-        """Enhanced title validation for updates"""
+        """Enhanced title validation for updates with user-friendly messages"""
         if value is not None:
             if not value or not value.strip():
-                raise serializers.ValidationError("Title cannot be empty.")
+                raise serializers.ValidationError("Please enter a title for your task.")
             
             if len(value.strip()) < 3:
-                raise serializers.ValidationError("Title must be at least 3 characters long.")
+                raise serializers.ValidationError("Task title must be at least 3 characters long. Please provide a more descriptive title.")
             
             if len(value) > 200:
-                raise serializers.ValidationError("Title cannot exceed 200 characters.")
+                raise serializers.ValidationError("Task title is too long. Please keep it under 200 characters.")
             
             value = value.strip()
             if value.lower() in ['task', 'todo', 'do this', 'work', 'task1', 'test']:
-                raise serializers.ValidationError("Please provide a more descriptive title.")
+                raise serializers.ValidationError("Please provide a more specific and descriptive title for your task.")
         
         return value.strip() if value else value
     
     def validate_description(self, value):
-        """Enhanced description validation for updates"""
+        """Enhanced description validation for updates with user-friendly messages"""
         if value is not None:
             value = value.strip()
             if len(value) < 10:
-                raise serializers.ValidationError("Description must be at least 10 characters long if provided.")
+                raise serializers.ValidationError("Please provide a more detailed description (at least 10 characters).")
             
             if len(value) > 2000:
-                raise serializers.ValidationError("Description cannot exceed 2000 characters.")
+                raise serializers.ValidationError("Description is too long. Please keep it under 2000 characters.")
         
         return value.strip() if value else value
     
     def validate_tags(self, value):
-        """Enhanced tags validation for updates"""
+        """Enhanced tags validation for updates with user-friendly messages"""
         if value is not None:
             value = value.strip()
             tags = [tag.strip() for tag in value.split(',')]
@@ -361,30 +361,30 @@ class TaskUpdateSerializer(serializers.ModelSerializer):
             tags = [tag for tag in tags if tag]
             
             if len(tags) > 10:
-                raise serializers.ValidationError("Cannot have more than 10 tags.")
+                raise serializers.ValidationError("You can add up to 10 tags. Please remove some tags.")
             
             for tag in tags:
                 if len(tag) > 30:
-                    raise serializers.ValidationError(f"Tag '{tag}' is too long. Maximum 30 characters per tag.")
+                    raise serializers.ValidationError(f"Tag '{tag}' is too long. Please keep each tag under 30 characters.")
             
             return ', '.join(tags)
         
         return value
     
     def validate_category(self, value):
-        """Enhanced category validation for updates"""
+        """Enhanced category validation for updates with user-friendly messages"""
         if value is not None:
             value = value.strip()
             if len(value) < 2:
-                raise serializers.ValidationError("Category must be at least 2 characters long.")
+                raise serializers.ValidationError("Category name must be at least 2 characters long.")
             if len(value) > 50:
-                raise serializers.ValidationError("Category cannot exceed 50 characters.")
+                raise serializers.ValidationError("Category name is too long. Please keep it under 50 characters.")
             return value
         
         return value
     
     def validate_assigned_to(self, value):
-        """Handle assigned_to field - accept user ID or username"""
+        """Handle assigned_to field with user-friendly messages"""
         if value is None:
             return value
         
@@ -393,7 +393,7 @@ class TaskUpdateSerializer(serializers.ModelSerializer):
                 user = User.objects.get(id=value)
                 return user
             except User.DoesNotExist:
-                raise serializers.ValidationError("User with this ID does not exist.")
+                raise serializers.ValidationError("User with this ID not found. Please check the user ID.")
         
         if isinstance(value, str):
             try:
@@ -404,12 +404,12 @@ class TaskUpdateSerializer(serializers.ModelSerializer):
                     user = User.objects.get(first_name__iexact=value)
                     return user
                 except User.DoesNotExist:
-                    raise serializers.ValidationError(f"User '{value}' not found.")
+                    raise serializers.ValidationError(f"User '{value}' not found. Please check the username or name.")
         
         return value
     
     def validate_due_date(self, value):
-        """Validate that due_date is not unreasonably in the past"""
+        """Validate that due_date is not unreasonably in the past with user-friendly messages"""
         if value is not None:
             from django.utils import timezone
             import datetime
@@ -423,20 +423,20 @@ class TaskUpdateSerializer(serializers.ModelSerializer):
             one_year_ago = today - datetime.timedelta(days=365)
             
             if check_date < one_year_ago:
-                raise serializers.ValidationError(f"Due date cannot be more than 1 year in the past. Due: {check_date}, Today: {today}")
+                raise serializers.ValidationError(f"Due date cannot be more than 1 year in the past. Please select a more recent date.")
         
         return value
     
     def validate_estimated_hours(self, value):
-        """Validate estimated hours is positive"""
+        """Validate estimated hours is positive with user-friendly messages"""
         if value is not None and value <= 0:
-            raise serializers.ValidationError("Estimated hours must be positive.")
+            raise serializers.ValidationError("Estimated hours must be a positive number. Please enter a value greater than 0.")
         return value
     
     def validate_actual_hours(self, value):
-        """Validate actual hours is positive"""
+        """Validate actual hours is positive with user-friendly messages"""
         if value is not None and value <= 0:
-            raise serializers.ValidationError("Actual hours must be positive.")
+            raise serializers.ValidationError("Actual hours must be a positive number. Please enter a value greater than 0.")
         return value
 
 

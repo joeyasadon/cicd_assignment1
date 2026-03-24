@@ -298,6 +298,100 @@ def edit_task(request, task_id):
     }, status=status.HTTP_400_BAD_REQUEST)
 
 
+@api_view(['PATCH'])
+@permission_classes([permissions.IsAuthenticated])
+def quick_edit_task(request, task_id):
+    """
+    Quick edit endpoint for common task updates with minimal validation
+    Perfect for user-friendly inline editing
+    """
+    try:
+        # Get task that user owns or is assigned to
+        task = Task.objects.get(
+            models.Q(id=task_id) & 
+            (models.Q(owner=request.user) | models.Q(assigned_to=request.user))
+        )
+    except Task.DoesNotExist:
+        return Response({
+            'error': 'Task not found or you do not have permission to edit it'
+        }, status=status.HTTP_404_NOT_FOUND)
+    
+    # Define quick-editable fields with minimal validation
+    quick_edit_fields = ['title', 'description', 'status', 'priority', 'category']
+    
+    # Filter request data to only include quick-editable fields
+    quick_data = {}
+    for field in quick_edit_fields:
+        if field in request.data:
+            quick_data[field] = request.data[field]
+    
+    if not quick_data:
+        return Response({
+            'error': 'No editable fields provided',
+            'editable_fields': quick_edit_fields
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    # Store original values for change tracking
+    original_values = {}
+    for field in quick_edit_fields:
+        if field in quick_data:
+            original_values[field] = getattr(task, field)
+    
+    # Use a simpler validation for quick edits
+    serializer = TaskUpdateSerializer(task, data=quick_data, partial=True)
+    
+    if serializer.is_valid():
+        updated_task = serializer.save()
+        
+        # Track what changed with user-friendly messages
+        changes = []
+        for field, original_value in original_values.items():
+            new_value = getattr(updated_task, field)
+            
+            if original_value != new_value:
+                # Create user-friendly change descriptions
+                if field == 'status':
+                    changes.append(f"Status changed from '{original_value}' to '{new_value}'")
+                elif field == 'priority':
+                    changes.append(f"Priority changed from '{original_value}' to '{new_value}'")
+                elif field == 'title':
+                    changes.append(f"Title updated from '{original_value}' to '{new_value}'")
+                elif field == 'description':
+                    if original_value and new_value:
+                        changes.append("Description updated")
+                    elif not original_value and new_value:
+                        changes.append("Description added")
+                    elif original_value and not new_value:
+                        changes.append("Description removed")
+                elif field == 'category':
+                    if original_value and new_value:
+                        changes.append(f"Category changed from '{original_value}' to '{new_value}'")
+                    elif not original_value and new_value:
+                        changes.append(f"Category set to '{new_value}'")
+                    elif original_value and not new_value:
+                        changes.append("Category removed")
+        
+        # Return updated task details
+        task_serializer = TaskSerializer(updated_task)
+        
+        response_message = 'Task updated successfully'
+        if changes:
+            response_message += f'. {"; ".join(changes)}'
+        
+        return Response({
+            'message': response_message,
+            'task': task_serializer.data,
+            'changes_made': changes,
+            'quick_edit': True
+        }, status=status.HTTP_200_OK)
+    
+    return Response({
+        'error': 'Validation failed',
+        'details': serializer.errors,
+        'hint': 'For complex edits, use the full edit endpoint'
+    }, status=status.HTTP_400_BAD_REQUEST)
+
+
 @api_view(['GET'])
 @permission_classes([permissions.IsAuthenticated])
 def task_statistics(request):
