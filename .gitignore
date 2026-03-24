@@ -4,3 +4,11 @@
 
 # Django
 db.sqlite3
+
+# Environment variables
+.env
+
+# Static and media files
+/static/
+/media/
+/staticfiles/
