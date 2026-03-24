@@ -21,12 +21,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-fi25yj)(27q_9e!_pa4)qgy2xfkunw#dn754y(bj6=4ouncqv_'
+SECRET_KEY = config('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = config('DEBUG', default=True, cast=bool)
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1', cast=lambda v: [s.strip() for s in v.split(',')])
 
 
 # Django REST Framework configuration
@@ -93,11 +93,11 @@ WSGI_APPLICATION = 'tasksphere_app.wsgi.app'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': config('PGDATABASE'),
-        'USER': config('PGUSER'),
-        'PASSWORD': config('PGPASSWORD'),
-        'HOST': config('PGHOST'),
-        'PORT': '5432',
+        'NAME': config('PGDATABASE', default='neondb'),
+        'USER': config('PGUSER', default='neondb_owner'),
+        'PASSWORD': config('PGPASSWORD', default=''),
+        'HOST': config('PGHOST', default='localhost'),
+        'PORT': config('PGPORT', default='5432'),
     }
 }
 
@@ -136,4 +136,9 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = config('STATIC_URL', default='static/')
+STATIC_ROOT = config('STATIC_ROOT', default=BASE_DIR / 'staticfiles')
+
+# Media files
+MEDIA_URL = config('MEDIA_URL', default='media/')
+MEDIA_ROOT = config('MEDIA_ROOT', default=BASE_DIR / 'media')
