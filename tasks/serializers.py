@@ -311,6 +311,135 @@ class TaskStatusUpdateSerializer(serializers.ModelSerializer):
         return value
 
 
+class TaskUpdateSerializer(serializers.ModelSerializer):
+    """
+    Enhanced serializer for task updates with validation
+    """
+    class Meta:
+        model = Task
+        fields = [
+            'title', 'description', 'assigned_to', 'due_date', 'priority',
+            'status', 'estimated_hours', 'actual_hours', 'tags', 'category'
+        ]
+    
+    def validate_title(self, value):
+        """Enhanced title validation for updates"""
+        if value is not None:
+            if not value or not value.strip():
+                raise serializers.ValidationError("Title cannot be empty.")
+            
+            if len(value.strip()) < 3:
+                raise serializers.ValidationError("Title must be at least 3 characters long.")
+            
+            if len(value) > 200:
+                raise serializers.ValidationError("Title cannot exceed 200 characters.")
+            
+            value = value.strip()
+            if value.lower() in ['task', 'todo', 'do this', 'work', 'task1', 'test']:
+                raise serializers.ValidationError("Please provide a more descriptive title.")
+        
+        return value.strip() if value else value
+    
+    def validate_description(self, value):
+        """Enhanced description validation for updates"""
+        if value is not None:
+            value = value.strip()
+            if len(value) < 10:
+                raise serializers.ValidationError("Description must be at least 10 characters long if provided.")
+            
+            if len(value) > 2000:
+                raise serializers.ValidationError("Description cannot exceed 2000 characters.")
+        
+        return value.strip() if value else value
+    
+    def validate_tags(self, value):
+        """Enhanced tags validation for updates"""
+        if value is not None:
+            value = value.strip()
+            tags = [tag.strip() for tag in value.split(',')]
+            
+            tags = [tag for tag in tags if tag]
+            
+            if len(tags) > 10:
+                raise serializers.ValidationError("Cannot have more than 10 tags.")
+            
+            for tag in tags:
+                if len(tag) > 30:
+                    raise serializers.ValidationError(f"Tag '{tag}' is too long. Maximum 30 characters per tag.")
+            
+            return ', '.join(tags)
+        
+        return value
+    
+    def validate_category(self, value):
+        """Enhanced category validation for updates"""
+        if value is not None:
+            value = value.strip()
+            if len(value) < 2:
+                raise serializers.ValidationError("Category must be at least 2 characters long.")
+            if len(value) > 50:
+                raise serializers.ValidationError("Category cannot exceed 50 characters.")
+            return value
+        
+        return value
+    
+    def validate_assigned_to(self, value):
+        """Handle assigned_to field - accept user ID or username"""
+        if value is None:
+            return value
+        
+        if isinstance(value, int):
+            try:
+                user = User.objects.get(id=value)
+                return user
+            except User.DoesNotExist:
+                raise serializers.ValidationError("User with this ID does not exist.")
+        
+        if isinstance(value, str):
+            try:
+                user = User.objects.get(username=value)
+                return user
+            except User.DoesNotExist:
+                try:
+                    user = User.objects.get(first_name__iexact=value)
+                    return user
+                except User.DoesNotExist:
+                    raise serializers.ValidationError(f"User '{value}' not found.")
+        
+        return value
+    
+    def validate_due_date(self, value):
+        """Validate that due_date is not unreasonably in the past"""
+        if value is not None:
+            from django.utils import timezone
+            import datetime
+            
+            if isinstance(value, datetime.datetime):
+                check_date = value.date()
+            else:
+                check_date = value
+            
+            today = timezone.now().date()
+            one_year_ago = today - datetime.timedelta(days=365)
+            
+            if check_date < one_year_ago:
+                raise serializers.ValidationError(f"Due date cannot be more than 1 year in the past. Due: {check_date}, Today: {today}")
+        
+        return value
+    
+    def validate_estimated_hours(self, value):
+        """Validate estimated hours is positive"""
+        if value is not None and value <= 0:
+            raise serializers.ValidationError("Estimated hours must be positive.")
+        return value
+    
+    def validate_actual_hours(self, value):
+        """Validate actual hours is positive"""
+        if value is not None and value <= 0:
+            raise serializers.ValidationError("Actual hours must be positive.")
+        return value
+
+
 class UserSerializer(serializers.ModelSerializer):
     """
     Simple user serializer for task assignment
