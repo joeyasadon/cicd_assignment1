@@ -28,6 +28,7 @@ urlpatterns = [
     # Task management
     path('<int:task_id>/status/', views.update_task_status, name='update_task_status'),
     path('<int:task_id>/edit/', views.edit_task, name='edit_task'),
+    path('<int:task_id>/quick-edit/', views.quick_edit_task, name='quick_edit_task'),
     
     # User management
     path('users/', views.users_for_assignment, name='users_for_assignment'),
