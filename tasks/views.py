@@ -205,13 +205,18 @@ class TaskDetailView(generics.RetrieveUpdateDestroyAPIView):
         """
         instance = self.get_object()
         task_title = instance.title
+        task_id = instance.id
         self.perform_destroy(instance)
+        
+        from django.utils import timezone
+        deleted_at = timezone.now().isoformat()
         
         return Response({
             'message': f'Task "{task_title}" deleted successfully',
             'deleted_task': {
-                'id': instance.id,
-                'title': task_title
+                'id': task_id,
+                'title': task_title,
+                'deleted_at': deleted_at
             }
         }, status=status.HTTP_200_OK)
 
