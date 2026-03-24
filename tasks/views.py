@@ -5,7 +5,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 from django.contrib.auth.models import User
 from django.db import models
 from .models import Task
-from .serializers import TaskSerializer, TaskCreateSerializer, SimpleTaskCreateSerializer, TaskStatusUpdateSerializer, UserSerializer
+from .serializers import TaskSerializer, TaskCreateSerializer, SimpleTaskCreateSerializer, TaskStatusUpdateSerializer, TaskUpdateSerializer, UserSerializer
 
 
 class TaskPagination(pagination.PageNumberPagination):
@@ -116,7 +116,6 @@ class TaskDetailView(generics.RetrieveUpdateDestroyAPIView):
     DELETE: Delete a task
     """
     permission_classes = [permissions.IsAuthenticated]
-    serializer_class = TaskSerializer
     
     def get_queryset(self):
         """
@@ -126,6 +125,14 @@ class TaskDetailView(generics.RetrieveUpdateDestroyAPIView):
         return Task.objects.filter(
             models.Q(owner=user) | models.Q(assigned_to=user)
         ).select_related('owner', 'assigned_to').distinct()
+    
+    def get_serializer_class(self):
+        """
+        Use different serializers for different methods
+        """
+        if self.request.method in ['PUT', 'PATCH']:
+            return TaskUpdateSerializer
+        return TaskSerializer
     
     def retrieve(self, request, *args, **kwargs):
         """
@@ -137,6 +144,158 @@ class TaskDetailView(generics.RetrieveUpdateDestroyAPIView):
             'message': 'Task retrieved successfully',
             'task': serializer.data
         })
+    
+    def update(self, request, *args, **kwargs):
+        """
+        Override update method to provide enhanced response with validation
+        """
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        
+        # Store original values for change tracking
+        original_values = {
+            'title': instance.title,
+            'status': instance.status,
+            'priority': instance.priority,
+            'assigned_to': instance.assigned_to.first_name if instance.assigned_to else None,
+            'due_date': instance.due_date
+        }
+        
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        if serializer.is_valid():
+            updated_task = serializer.save()
+            
+            # Track what changed
+            changes = []
+            if 'title' in request.data and original_values['title'] != updated_task.title:
+                changes.append(f"title: '{original_values['title']}' → '{updated_task.title}'")
+            
+            if 'status' in request.data and original_values['status'] != updated_task.status:
+                changes.append(f"status: '{original_values['status']}' → '{updated_task.status}'")
+            
+            if 'priority' in request.data and original_values['priority'] != updated_task.priority:
+                changes.append(f"priority: '{original_values['priority']}' → '{updated_task.priority}'")
+            
+            if 'assigned_to' in request.data:
+                new_assigned = updated_task.assigned_to.first_name if updated_task.assigned_to else None
+                if original_values['assigned_to'] != new_assigned:
+                    changes.append(f"assigned_to: '{original_values['assigned_to']}' → '{new_assigned}'")
+            
+            if 'due_date' in request.data and original_values['due_date'] != updated_task.due_date:
+                changes.append(f"due_date: '{original_values['due_date']}' → '{updated_task.due_date}'")
+            
+            # Return updated task details
+            task_serializer = TaskSerializer(updated_task)
+            
+            response_message = 'Task updated successfully'
+            if changes:
+                response_message += f'. Changes: {", ".join(changes)}'
+            
+            return Response({
+                'message': response_message,
+                'task': task_serializer.data,
+                'changes_made': changes
+            }, status=status.HTTP_200_OK)
+        
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    def destroy(self, request, *args, **kwargs):
+        """
+        Override destroy method to provide enhanced response
+        """
+        instance = self.get_object()
+        task_title = instance.title
+        self.perform_destroy(instance)
+        
+        return Response({
+            'message': f'Task "{task_title}" deleted successfully',
+            'deleted_task': {
+                'id': instance.id,
+                'title': task_title
+            }
+        }, status=status.HTTP_200_OK)
+
+
+@api_view(['PUT', 'PATCH'])
+@permission_classes([permissions.IsAuthenticated])
+def edit_task(request, task_id):
+    """
+    Dedicated endpoint for editing tasks with enhanced validation and change tracking
+    PUT: Complete update of all fields
+    PATCH: Partial update of specific fields
+    """
+    try:
+        # Get task that user owns or is assigned to
+        task = Task.objects.get(
+            models.Q(id=task_id) & 
+            (models.Q(owner=request.user) | models.Q(assigned_to=request.user))
+        )
+    except Task.DoesNotExist:
+        return Response({
+            'error': 'Task not found or you do not have permission to edit it'
+        }, status=status.HTTP_404_NOT_FOUND)
+    
+    # Determine if this is a partial update
+    partial = request.method == 'PATCH'
+    
+    # Store original values for change tracking
+    original_values = {
+        'title': task.title,
+        'description': task.description,
+        'status': task.status,
+        'priority': task.priority,
+        'assigned_to': task.assigned_to.first_name if task.assigned_to else None,
+        'due_date': task.due_date,
+        'estimated_hours': task.estimated_hours,
+        'actual_hours': task.actual_hours,
+        'tags': task.tags,
+        'category': task.category
+    }
+    
+    # Use the update serializer
+    serializer = TaskUpdateSerializer(task, data=request.data, partial=partial)
+    
+    if serializer.is_valid():
+        updated_task = serializer.save()
+        
+        # Track what changed
+        changes = []
+        for field, original_value in original_values.items():
+            if field in request.data:
+                new_value = getattr(updated_task, field)
+                
+                # Handle special cases for comparison
+                if field == 'assigned_to':
+                    new_display = new_value.first_name if new_value else None
+                    if original_value != new_display:
+                        changes.append(f"{field}: '{original_value}' → '{new_display}'")
+                elif field == 'due_date':
+                    # Format dates for display
+                    orig_display = original_value.isoformat() if original_value else None
+                    new_display = new_value.isoformat() if new_value else None
+                    if orig_display != new_display:
+                        changes.append(f"{field}: '{orig_display}' → '{new_display}'")
+                elif original_value != new_value:
+                    changes.append(f"{field}: '{original_value}' → '{new_value}'")
+        
+        # Return updated task details
+        task_serializer = TaskSerializer(updated_task)
+        
+        response_message = 'Task edited successfully'
+        if changes:
+            response_message += f'. Changes: {", ".join(changes)}'
+        
+        return Response({
+            'message': response_message,
+            'task': task_serializer.data,
+            'changes_made': changes,
+            'edit_method': 'PATCH' if partial else 'PUT'
+        }, status=status.HTTP_200_OK)
+    
+    return Response({
+        'error': 'Validation failed',
+        'details': serializer.errors
+    }, status=status.HTTP_400_BAD_REQUEST)
 
 
 @api_view(['GET'])
