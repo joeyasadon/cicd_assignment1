@@ -119,8 +119,14 @@ def update_profile(request):
     try:
         profile = UserProfile.objects.get(user=request.user)
         
+        # Update phone number in UserProfile
         if 'phone_number' in request.data:
             profile.phone_number = request.data['phone_number']
+        
+        # Update display name in User model
+        if 'display_name' in request.data:
+            request.user.first_name = request.data['display_name']
+            request.user.save()
         
         profile.save()
         
