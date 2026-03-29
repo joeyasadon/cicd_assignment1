@@ -52,11 +52,13 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework.authtoken',
     'django_filters',
+    'corsheaders',
     'accounts',
     'tasks',
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -142,3 +144,11 @@ STATIC_ROOT = config('STATIC_ROOT', default=BASE_DIR / 'staticfiles')
 # Media files
 MEDIA_URL = config('MEDIA_URL', default='media/')
 MEDIA_ROOT = config('MEDIA_ROOT', default=BASE_DIR / 'media')
+
+# CORS settings
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+]
+
+# Allow credentials for CORS
+CORS_ALLOW_CREDENTIALS = True
