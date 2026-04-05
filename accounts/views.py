@@ -40,8 +40,21 @@ def login_user(request):
     """
     Login user and return authentication token
     """
-    email = request.data.get('email')
-    password = request.data.get('password')
+    import json
+    
+    # Handle both dict and string data
+    if isinstance(request.data, str):
+        try:
+            data = json.loads(request.data)
+        except json.JSONDecodeError:
+            return Response({
+                'error': 'Invalid JSON data'
+            }, status=status.HTTP_400_BAD_REQUEST)
+    else:
+        data = request.data
+    
+    email = data.get('email')
+    password = data.get('password')
     
     if not email or not password:
         return Response({

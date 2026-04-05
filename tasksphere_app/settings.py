@@ -152,5 +152,32 @@ CORS_ALLOWED_ORIGINS = [
     "https://cicd-assignment1-frontend.vercel.app", # This is correct URL
 ]
 
+# Allow all origins in development (remove in production)
+if DEBUG:
+    CORS_ALLOW_ALL_ORIGINS = True
+
 # Allow credentials for CORS
 CORS_ALLOW_CREDENTIALS = True
+
+# Allow specific headers
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+]
+
+# Allow specific methods
+CORS_ALLOW_METHODS = [
+    'DELETE',
+    'GET',
+    'OPTIONS',
+    'PATCH',
+    'POST',
+    'PUT',
+]
