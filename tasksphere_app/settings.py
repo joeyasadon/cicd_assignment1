@@ -149,7 +149,7 @@ MEDIA_ROOT = config('MEDIA_ROOT', default=BASE_DIR / 'media')
 # CORS settings
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
-    "https://cicd-assignment1-frontend.vercel.app", # This is correct
+    "https://cicd-assignment1-frontend.vercel.app", # This is correct URL
 ]
 
 # Allow credentials for CORS
